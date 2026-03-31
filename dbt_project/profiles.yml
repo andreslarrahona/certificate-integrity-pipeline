@@ -1,0 +1,26 @@
+centec_profile:
+  target: dev
+
+  outputs:
+
+    dev:
+      type: snowflake
+      account: "{{ env_var('SNOWFLAKE_ACCOUNT') }}"
+      user: "{{ env_var('SNOWFLAKE_USER') }}"
+      password: "{{ env_var('SNOWFLAKE_PASSWORD') }}"
+      role: "{{ env_var('SNOWFLAKE_ROLE') }}"
+      database: ISO17025_AUDIT_SYSTEM
+      warehouse: COMPUTE_WH
+      schema: STAGING
+      threads: 4
+
+    prod:
+      type: snowflake
+      account: "{{ env_var('SNOWFLAKE_ACCOUNT') }}"
+      user: "{{ env_var('SNOWFLAKE_USER') }}"
+      password: "{{ env_var('SNOWFLAKE_PASSWORD') }}"
+      role: "{{ env_var('SNOWFLAKE_ROLE') }}"
+      database: ISO17025_AUDIT_SYSTEM
+      warehouse: COMPUTE_WH
+      schema: ANALYTICS
+      threads: 8

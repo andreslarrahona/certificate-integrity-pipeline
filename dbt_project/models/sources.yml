@@ -1,0 +1,69 @@
+version: 2
+
+sources:
+  - name: centec_raw
+    database: "{{ target.database }}"
+    schema: RAW_DATA
+
+    tables:
+      # -----------------------------
+      # CORE OLTP INGESTION (MySQL → RAW)
+      # -----------------------------
+      - name: ordenes
+        description: "Work orders from the transactional system."
+        loaded_at_field: _INGESTED_AT
+        freshness:
+          warn_after: {count: 48, period: hour}
+          error_after: {count: 72, period: hour}
+        columns:
+          - name: id
+            tests: 
+              - not_null
+              - unique
+
+      - name: cambios_estados_ordenes
+        description: "Historical record of status changes per order."
+        loaded_at_field: _INGESTED_AT
+        freshness:
+          warn_after: {count: 48, period: hour}
+          error_after: {count: 72, period: hour}
+
+      - name: instrumentos_clientes
+        description: "Customer-Instrument relationship."
+        loaded_at_field: _INGESTED_AT
+
+      - name: modelos
+        loaded_at_field: _INGESTED_AT
+
+      - name: marcas
+        loaded_at_field: _INGESTED_AT
+
+      - name: remito_movimientos
+        loaded_at_field: _INGESTED_AT
+
+      - name: clientes
+        loaded_at_field: _INGESTED_AT
+
+      - name: clientes_users
+        loaded_at_field: _INGESTED_AT
+
+      - name: users
+        loaded_at_field: _INGESTED_AT
+
+      - name: estados_ordenes
+        loaded_at_field: _INGESTED_AT
+
+      - name: tipos_instrumentos
+        loaded_at_field: _INGESTED_AT
+
+      - name: remitos_prueba
+        loaded_at_field: _INGESTED_AT
+
+      - name: notas_ingreso_prueba
+        loaded_at_field: _INGESTED_AT
+
+      # -----------------------------
+      # PDF / LLM PIPELINE INPUT
+      # -----------------------------
+      - name: CERTIFICATES_TEXT_BASE
+        description: "Base text extracted from PDFs prior to LLM processing."

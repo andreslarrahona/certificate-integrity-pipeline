@@ -1,0 +1,43 @@
+name: 'centec_analytics'
+version: '1.0.0'
+config-version: 2
+
+profile: 'centec_profile'
+
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+# Global Variables
+vars:
+  cortex_batch_limit: 100
+
+# Directory-based configurations
+models:
+  centec_analytics:
+    staging:
+      +materialized: view
+      +schema: staging
+      +tags: ["staging"]
+
+    intermediate:
+      +materialized: view
+      +schema: intermediate
+      +tags: ["intermediate"]
+
+    marts:
+      +materialized: table
+      +schema: analytics
+      +tags: ["analytics"]
+
+# SEED CONFIGURATION (CRITICAL FOR SNOWFLAKE)
+seeds:
+  centec_analytics:
+    +quote_columns: false

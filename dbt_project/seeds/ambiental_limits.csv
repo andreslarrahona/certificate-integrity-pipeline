@@ -1,0 +1,3 @@
+magnitude_id,magnitude,lower_limit,upper_limit,procedure_version
+1,temperature,18.0,27.0,v00
+2,humidity,20.0,50.0,v00
