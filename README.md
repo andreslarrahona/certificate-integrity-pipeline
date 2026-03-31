@@ -1,6 +1,6 @@
-# Continuous Compliance Pipeline: Automated ISO 17025 Audit System
+# Certificate Integrity Pipeline
 
-This pipeline audits ISO 17025 calibration certificates against the operational database — extracting structured data from physical PDFs using an LLM, comparing it against system records, and flagging non-conformities using dbt compliance rules. It runs daily against the full certificate population, replacing manual spot-checks with continuous, automated coverage.
+This pipeline detects discrepancies between issued calibration certificates and production records. It extracts structured data from PDFs using an LLM, compares it against the operational database, and flags non-conformities using dbt compliance rules, replacing manual spot-checks with automated daily coverage.
 
 ### Overview
 
