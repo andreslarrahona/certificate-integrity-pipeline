@@ -14,7 +14,6 @@ raw_parsing as (
         file_timestamp,
         is_truncated,
         
-        -- Mapping defensivo: Coalesce por si el LLM cambia el naming
         COALESCE(
             clean_json:certificate_id::string, 
             clean_json:certificate_nro::string,
@@ -23,12 +22,10 @@ raw_parsing as (
         
         clean_json:serial_number::string as serial_number,
         try_to_date(clean_json:calibration_date::string, 'DD/MM/YYYY') as calibration_date,
-        
-        -- Conversión segura a float
-        try_to_double(clean_json:nominal_temperature_c::string) as nominal_temperature_c,
-        try_to_double(clean_json:temperature_uncertainty_c::string) as temperature_uncertainty_c,
-        try_to_double(clean_json:nominal_humidity_pct::string) as nominal_humidity_pct,
-        try_to_double(clean_json:humidity_uncertainty_pct::string) as humidity_uncertainty_pct,
+        try_to_double(replace(clean_json:raw_temperature::string, ',', '.')) as nominal_temperature_c,
+        try_to_double(replace(clean_json:raw_temp_u::string, ',', '.')) as temperature_uncertainty_c,
+        try_to_double(replace(clean_json:raw_humidity::string, ',', '.')) as nominal_humidity_pct,
+        try_to_double(replace(clean_json:raw_hum_u::string, ',', '.')) as humidity_uncertainty_pct,
         
         clean_json 
     from extracted_data
@@ -48,7 +45,6 @@ select
     is_truncated,
     
     case when is_valid_format then raw_certificate_id else null end as certificate_id,
-    -- Extraemos el nro de orden solo si el formato es válido
     case 
         when is_valid_format then REGEXP_SUBSTR(raw_certificate_id, '^(\\d{4})', 1, 1, 'e') 
         else null 
@@ -61,7 +57,6 @@ select
     nominal_humidity_pct,
     humidity_uncertainty_pct,
 
-    -- Triage de Calidad más granular
     case 
         when clean_json is null then 'ERR_JSON_NULL'
         when not has_id then 'ERR_MISSING_ID'
