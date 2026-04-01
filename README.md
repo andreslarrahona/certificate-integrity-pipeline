@@ -143,7 +143,7 @@ Data movement is orchestrated via Airflow DAGs.
 The pipeline converts PDF text into structured relational data in two steps: LLM inference and format validation.
 
   * **`stg_pdf__extracted.sql` (LLM Inference):** Uses `SNOWFLAKE.CORTEX.COMPLETE` (Llama 3.1) with Few-Shot prompting to generate a strict JSON object from the raw text. This model is materialized as `incremental` with batch limits to prevent runaway API costs during daily dbt runs.
-  * **`stg_pdf__parsed.sql` (Quality Triage):** A declarative view that unpacks the JSON. It uses safe casting (`TRY_TO_DOUBLE`) to handle VARIANT nulls and strict Regex to enforce business formats. It generates a `status_ia` flag (`OK`, `JSON_NULL`,`MISSING_KEY_DATA`, `WARN_TRUNCATED`, `INVALID_FORMAT`), acting as a bouncer that prevents hallucinated data from breaking downstream joins.
+  * **`stg_pdf__parsed.sql` (Quality Triage):** A declarative view that unpacks the JSON. It uses safe casting (`TRY_TO_DOUBLE`) to handle VARIANT nulls and strict Regex to enforce business formats. It generates a `ia_status` flag (`OK`, `JSON_NULL`,`MISSING_KEY_DATA`, `WARN_TRUNCATED`, `INVALID_FORMAT`), acting as a bouncer that prevents hallucinated data from breaking downstream joins.
 
 ### 4\. Master Data Management (dbt Seeds)
 
@@ -176,7 +176,7 @@ The `ANALYTICS` layer splits into two fact tables, separating business auditing 
   * **Partial failure (1 case):** `certificado_6666` has no expected temperature or humidity in the golden dataset, so only serial number accuracy applies — the model returned NULL for a non-standard alphanumeric serial (`23JUL117124`).
   * **Rounding edge case (1 case):** `certificado_3333` humidity expected `28.9`, predicted NULL — the model likely extracted `29` and discarded the decimal, which TRY_TO_DOUBLE then failed to match.
 
-  **Guardrail:** Records flagged as `ERR_JSON_NULL`, `ERR_MISSING_ID`, or `ERR_INVALID_FORMAT` by the `status_ia` triage are excluded from `fct_audit` and routed to manual review.
+  **Guardrail:** Records flagged as `ERR_JSON_NULL`, `ERR_MISSING_ID`, or `ERR_INVALID_FORMAT` by the `ia_status` triage are excluded from `fct_audit` and routed to manual review.
 
   </details>
 
