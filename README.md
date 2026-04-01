@@ -20,19 +20,21 @@ This pipeline detects discrepancies between issued calibration certificates and 
 
   >**Architecture Note:** This project builds on the operational analytics platform documented [here](https://github.com/andreslarrahona/operational-analytics-platform). The stack moved from PostgreSQL on-premise to Snowflake to run LLM inference in-warehouse via Cortex AI, avoiding the need to move raw PDF content to an external API.
 
+
+
 ### AI Extraction Results
 
-The pipeline uses Llama 3.1-8b via Snowflake Cortex to extract structured data from certificate PDFs. Accuracy was measured against a manually verified sample of 30 certificates:
+The pipeline uses Snowflake Cortex to extract structured data from certificate PDFs. Three models were evaluated against a manually verified sample of 30 certificates:
 
-| Field | Accuracy | Primary failure mode |
-| :--- | :--- | :--- |
-| Serial Number | 73.3% | Non-linear layouts (columns, rotated text) |
-| Temperature | 76.7% | Attention drift in dense tables |
-| Humidity | 73.3% | Value confusion with adjacent fields |
+| Model | Serial # | Temperature | Humidity |
+| :--- | :--- | :--- | :--- |
+| llama3.1-8b | 76.7% | 76.7% | 73.3% |
+| llama3.1-70b | 80.0% | 80.0% | 80.0% |
+| mistral-large2 | 80.0% | 80.0% | 76.7% |
 
-These results informed two architectural decisions: the `status_ia` triage layer that prevents hallucinated data from reaching the compliance audit, and the `fct_ai_accuracy` fact table that re-runs this benchmark daily against new certificates.
+The pipeline runs on `llama3.1-70b`. It improves consistently over the 8b model across all three fields. `mistral-large2` matches on serial number but underperforms on humidity, making `llama3.1-70b` the more consistent choice.
 
-
+---
 
 
 ## Architecture and Pipeline Breakdown
@@ -159,18 +161,22 @@ The `ANALYTICS` layer splits into two fact tables, separating business auditing 
 
   </br>
   <details>
-  <summary style="cursor:pointer">Benchmark results: Llama 3.1-8b against golden dataset (n=30)</summary>
+  <summary style="cursor:pointer">Benchmark results: Llama 3.1-70b against golden dataset (n=30)</summary>
 
-  | Metric | Accuracy | Observations |
-  | :--- | :--- | :--- |
-  | Serial Number | 73.3% | Sensitivity to alphanumeric strings and template bias. |
-  | Temperature | 76.7% | High precision, but prone to attention drift in dense layouts. |
-  | Humidity | 73.3% | Occasional confusion with pressure or temperature values. |
+  | Model | Serial # | Temperature | Humidity |
+  | :--- | :--- | :--- | :--- |
+  | llama3.1-8b | 76.7% | 76.7% | 73.3% |
+  | llama3.1-70b | 80.0% | 80.0% | 80.0% |
+  | mistral-large2 | 80.0% | 80.0% | 76.7% |
 
-  **Error Analysis:**
-  * **Template Bias:** The model occasionally extracted footer values (phone numbers, tax IDs) as serial numbers due to lack of spatial OCR coordinates.
-  * **Attention Drift:** In complex tables, the 8B model sometimes swapped Temperature and Humidity values when physically close in the raw text.
-  * **Guardrail:** These results justified the `status_ia` triage. Records flagged as `JSON_NULL`, `MISSING_KEY_DATA`, `MISSING_KEY_DATA` or `INVALID_FORMAT` are routed to manual review before reaching `fct_audit`.
+  **Error Analysis (llama3.1-70b, n=6 failures):**
+
+  * **Total extraction failure (4 cases):** `certificado_2526`, `certificado_3999`, `certificado_2615`, `certificado_8424` — the model returned NULL across all fields. Likely caused by non-standard PDF layouts where text extraction via PyPDF2 produces malformed or unordered raw text, leaving the LLM without parseable input.
+  * **Wrong value extracted (2 cases):** `certificado_4058` returned `3826417` instead of `E0583` — a numeric string present elsewhere in the document was substituted for the alphanumeric serial. `certificado_4898` returned `-6.7` for temperature instead of `10` — likely a delta or correction value printed adjacent to the nominal reading.
+  * **Partial failure (1 case):** `certificado_6666` has no expected temperature or humidity in the golden dataset, so only serial number accuracy applies — the model returned NULL for a non-standard alphanumeric serial (`23JUL117124`).
+  * **Rounding edge case (1 case):** `certificado_3333` humidity expected `28.9`, predicted NULL — the model likely extracted `29` and discarded the decimal, which TRY_TO_DOUBLE then failed to match.
+
+  **Guardrail:** Records flagged as `ERR_JSON_NULL`, `ERR_MISSING_ID`, or `ERR_INVALID_FORMAT` by the `status_ia` triage are excluded from `fct_audit` and routed to manual review.
 
   </details>
 
